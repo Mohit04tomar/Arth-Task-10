@@ -1,0 +1,85 @@
+- hosts: all
+  tasks:
+       - name:  "Creating Mount Point"  
+         file:
+               state: directory
+               path: "/dvd"
+    
+       - name: "Mounting CD"
+         mount:
+                src: "/dev/cdrom"
+                path: "/dvd"
+                fstype: "iso9660"
+                state: mounted
+       
+       - name: "AppStream Repo Setup"
+         yum_repository:
+               baseurl: "/dvd/AppStream"
+               name: "DVD1"
+               description: "This is DVD1"
+               gpgcheck: no
+  
+       - name: "BaseOS Repo Setup"
+         yum_repository:
+               baseurl: "/dvd/BaseOS"
+               name: "DVD2"
+               description: "This is DVD2"
+               gpgcheck: no
+   
+       - name: "Docker Repo Setup"
+         yum_repository:
+               baseurl: "https://download.docker.com/linux/centos/7/x86_64/stable/"
+               name: "docker-yum"
+               description: "Docker Repo"
+               state: present
+               gpgcheck: no
+
+       - name: "Python 3 installing" 
+         package:
+               name: "python3"
+               state: present
+       
+       - name : "pip module docker install to resolve dependencies"
+         pip:
+                 name: docker
+
+       - name: "installing docker"
+         command: "yum install docker-ce --nobest -y"
+
+
+       - name: "Starting Docker Service"
+         service:
+               name: "docker"
+               state: restarted
+               enabled: yes
+    
+       - name: "Pulling Docker image"
+         community.general.docker_image:
+               name: "httpd"
+               source: pull
+
+       - name: "Creating Webdocs"
+         file:
+               path: "/webbb"
+               state: directory
+
+       - name: "Uploading HTML files to webdocs"
+         copy:
+               src: "/ws1/wepage.html"
+               dest: "/webbb/index.html"
+
+       - name: "Launching Http Container"
+         docker_container:
+               name: "WebOS"
+               image: "httpd"
+               exposed_ports: "80"
+               ports: "8080:80"
+               volumes: 
+                      - /webbb/:/usr/local/apache2/htdocs/
+
+       - name: "Permitting traffic on Port 8080 "
+         service:
+               name: "firewalld"
+               state: stopped
+               enabled: False
+
